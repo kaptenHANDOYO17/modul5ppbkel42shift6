@@ -18,6 +18,9 @@ class ReviewService {
         ? data.map((r) => ({
             id: r.id,
             product_id: r.product_id,
+            user_id: r.user_id ? String(r.user_id) : null,
+            likes: Number(r.likes ?? r.thumbs_up ?? 0),
+            dislikes: Number(r.dislikes ?? r.thumbs_down ?? 0),
             user_identifier: r.user_id ? `Operator ${String(r.user_id).substring(0, 8)}` : 'Anonymous',
             rating: r.rating,
             comment: r.comment || '',
@@ -68,6 +71,10 @@ class ReviewService {
         },
         { headers: { Prefer: 'return=representation' } },
       )
+      // PostgREST returns [] (not an error) when RLS blocks the update.
+      if (Array.isArray(res) && res.length === 0) {
+        throw { message: 'Server refused to update this review.', status: 403 }
+      }
       return { success: true, data: Array.isArray(res) ? res[0] : res }
     }
 
@@ -79,7 +86,13 @@ class ReviewService {
    */
   async deleteReview(reviewId) {
     if (IS_SUPABASE) {
-      await apiClient.delete(`/rest/v1/reviews?id=eq.${reviewId}`)
+      const res = await apiClient.delete(`/rest/v1/reviews?id=eq.${reviewId}`, {
+        headers: { Prefer: 'return=representation' },
+      })
+      // PostgREST returns [] (not an error) when RLS blocks the delete.
+      if (Array.isArray(res) && res.length === 0) {
+        throw { message: 'Server refused to delete this review.', status: 403 }
+      }
       return { success: true }
     }
 

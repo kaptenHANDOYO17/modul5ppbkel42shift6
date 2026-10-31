@@ -25,7 +25,7 @@ if "!GITMAIL!"=="" (
 
 git branch -M main
 git add .
-git diff --cached --quiet || git commit -m "feat: modul 5 PWA terintegrasi API"
+git diff --cached --quiet || git commit -m "chore: update project dari laptop"
 
 rem --- buang remote bawaan repo modul (SekarBnY) ---
 for /f "delims=" %%u in ('git remote get-url origin 2^>nul') do set ORIGIN=%%u

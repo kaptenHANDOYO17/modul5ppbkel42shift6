@@ -17,10 +17,8 @@ if not exist ".env" (
   >> .env echo VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_TXg9-r3ZVI8YZMzE90nwsQ_PU9GAmzg
 )
 
-if not exist "node_modules" (
-  echo [+] Install dependencies, tunggu sebentar...
-  call npm install || (echo [X] npm install gagal & pause & exit /b 1)
-)
+echo [+] Install / update dependencies, tunggu sebentar...
+call npm install --no-audit --no-fund || (echo [X] npm install gagal & pause & exit /b 1)
 
 echo [+] Menjalankan server dev, browser akan terbuka otomatis.
 echo     Tutup jendela ini untuk menghentikan server.

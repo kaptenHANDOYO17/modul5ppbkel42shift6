@@ -4,6 +4,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useGuns } from '../hooks/useGuns'
 import GUNS_LOCAL from '../data/guns'
 import GunCard from '../components/gun/GunCard'
+import { useArchive } from '../stores/archiveStore'
 
 /**
  * FavoritesPage — Displays user's shortlisted / favorited weapons.
@@ -12,6 +13,7 @@ import GunCard from '../components/gun/GunCard'
 export default function FavoritesPage({ onSelectGun, onNavigateCatalog }) {
   const { favorites, loading: favLoading, error: favError, refetch } = useFavorites()
   const { guns: apiGuns } = useGuns({ limit: 100 })
+  const archive = useArchive()
 
   // All known guns catalog for fallback item lookup
   const allKnownGuns = useMemo(() => {
@@ -59,8 +61,10 @@ export default function FavoritesPage({ onSelectGun, onNavigateCatalog }) {
       }
     })
 
-    return resolved
-  }, [favorites, allKnownGuns])
+    // Hide soft-deleted (archived) items
+    const archivedIds = new Set(archive.map((a) => a.id))
+    return resolved.filter((g) => !archivedIds.has(String(g.id ?? g.name)))
+  }, [favorites, allKnownGuns, archive])
 
   const isLoading = favLoading && favoriteItems.length === 0
 

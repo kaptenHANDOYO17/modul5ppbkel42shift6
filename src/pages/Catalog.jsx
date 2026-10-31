@@ -1,12 +1,10 @@
 import { useState, useMemo } from 'react'
-import { RefreshCw, Plus, Loader, AlertCircle, PackageOpen } from 'lucide-react'
-import { useGuns } from '../hooks/useGuns'
-import GUNS_LOCAL from '../data/guns'
+import { RefreshCw, Plus, Loader, AlertCircle, PackageOpen, Database } from 'lucide-react'
+import { useGuns, LOCAL_GUNS } from '../hooks/useGuns'
 import GunCard from '../components/gun/GunCard'
-import GunDetail from '../components/gun/GunDetail'
 import AdvancedFilter from '../components/common/AdvancedFilter'
 import ConfirmModal from '../components/modals/ConfirmModal'
-import gunService from '../services/gunService'
+import { useArchive, archiveGun } from '../stores/archiveStore'
 import {
   matchesSearch,
   matchesCategory,
@@ -14,30 +12,36 @@ import {
   extractCategories,
 } from '../utils/helpers'
 
+const timeAgo = (ts) => {
+  if (!ts) return ''
+  const s = Math.round((Date.now() - ts) / 1000)
+  if (s < 60) return 'just now'
+  const m = Math.round(s / 60)
+  if (m < 60) return `${m} min ago`
+  return `${Math.round(m / 60)} hr ago`
+}
+
 /**
  * Catalog page — the main product listing.
  *
  * Data source priority:
- *   1. Live API via useGuns()
- *   2. Local static array (GUNS_LOCAL) when the API is unreachable
+ *   1. Query cache / live API via useGuns()
+ *   2. Local static array when the API is unreachable
  *
- * Features: search, category filter, sort, CRUD actions, detail modal.
+ * Archived (soft-deleted) items are hidden here and listed in Profile → Archive.
  */
 export default function Catalog({ onNavigate }) {
-  // ---- API data ----
-  const { guns: apiGuns, loading, error, refetch } = useGuns({ limit: 50 })
+  const { guns: apiGuns, loading, error, refetch, isFetching, updatedAt } = useGuns({ limit: 50 })
   const [useLocal, setUseLocal] = useState(false)
+  const archive = useArchive()
 
-  // Decide data source
+  const archivedIds = useMemo(() => new Set(archive.map((a) => a.id)), [archive])
+
   const rawGuns = useMemo(() => {
-    if (useLocal || (error && apiGuns.length === 0)) {
-      // Enrich local data with synthetic ids so FavoriteButton and detail work
-      return GUNS_LOCAL.map((g, i) => ({ ...g, id: g.id || `local-${i}` }))
-    }
-    return apiGuns
-  }, [apiGuns, error, useLocal])
+    const source = useLocal || (error && apiGuns.length === 0) ? LOCAL_GUNS : apiGuns
+    return source.filter((g) => !archivedIds.has(String(g.id ?? g.name)))
+  }, [apiGuns, error, useLocal, archivedIds])
 
-  // ---- filters / sort ----
   const [search, setSearch] = useState('')
   const [activeCategory, setActiveCategory] = useState('All')
   const [sortKey, setSortKey] = useState('name')
@@ -46,48 +50,26 @@ export default function Catalog({ onNavigate }) {
   const categories = useMemo(() => extractCategories(rawGuns), [rawGuns])
 
   const filteredGuns = useMemo(() => {
-    let result = rawGuns.filter(
+    const result = rawGuns.filter(
       (g) => matchesSearch(g, search) && matchesCategory(g, activeCategory),
     )
     return sortItems(result, sortKey, sortOrder)
   }, [rawGuns, search, activeCategory, sortKey, sortOrder])
 
-  // ---- detail view ----
-  const [selectedGun, setSelectedGun] = useState(null)
+  // ---- soft delete ----
+  const [archiveTarget, setArchiveTarget] = useState(null)
+  const [toast, setToast] = useState('')
 
-  // ---- delete ----
-  const [deleteTarget, setDeleteTarget] = useState(null)
-  const [deleting, setDeleting] = useState(false)
-  const [deleteError, setDeleteError] = useState('')
-
-  const handleDelete = async () => {
-    if (!deleteTarget) return
-    try {
-      setDeleting(true)
-      setDeleteError('')
-      await gunService.deleteGun(deleteTarget.id)
-      setDeleteTarget(null)
-      refetch()
-    } catch (err) {
-      setDeleteError(err.message || 'Failed to delete.')
-    } finally {
-      setDeleting(false)
-    }
+  const handleArchive = () => {
+    if (!archiveTarget) return
+    archiveGun(archiveTarget)
+    setToast(`"${archiveTarget.name}" moved to Archive. Restore it from Profile → Archive.`)
+    setArchiveTarget(null)
+    setTimeout(() => setToast(''), 3500)
   }
 
-  // ---- If viewing a single product detail ----
-  if (selectedGun) {
-    return (
-      <GunDetail
-        gun={selectedGun}
-        onBack={() => setSelectedGun(null)}
-        onEdit={(g) => onNavigate && onNavigate('Edit', g)}
-        onDelete={(g) => { setSelectedGun(null); setDeleteTarget(g) }}
-      />
-    )
-  }
+  const showError = !loading && error && !useLocal && apiGuns.length === 0
 
-  // ---- Main catalog view ----
   return (
     <>
       <section className="masthead">
@@ -106,18 +88,27 @@ export default function Catalog({ onNavigate }) {
               {filteredGuns.length} piece{filteredGuns.length !== 1 ? 's' : ''}
             </span>
             {onNavigate && (
-              <button
-                type="button"
-                className="btn btn--primary btn--sm"
-                onClick={() => onNavigate('Create')}
-              >
+              <button type="button" className="btn btn--primary btn--sm" onClick={() => onNavigate('Create')}>
                 <Plus size={16} /> Add
               </button>
             )}
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Query cache status */}
+        {!useLocal && updatedAt > 0 && (
+          <div className="cache-bar">
+            <Database size={14} />
+            <span>
+              {isFetching ? 'Refreshing…' : `Cached · updated ${timeAgo(updatedAt)}`}
+              {error && ' · offline, showing cached data'}
+            </span>
+            <button type="button" className="link-btn" onClick={() => refetch()} disabled={isFetching}>
+              <RefreshCw size={13} className={isFetching ? 'spin' : ''} /> Refresh
+            </button>
+          </div>
+        )}
+
         <AdvancedFilter
           search={search}
           onSearch={setSearch}
@@ -129,7 +120,6 @@ export default function Catalog({ onNavigate }) {
           onSort={({ key, order }) => { setSortKey(key); setSortOrder(order) }}
         />
 
-        {/* States */}
         {loading && (
           <div className="state-box">
             <Loader size={28} className="spin" />
@@ -137,42 +127,37 @@ export default function Catalog({ onNavigate }) {
           </div>
         )}
 
-        {!loading && error && !useLocal && (
+        {showError && (
           <div className="state-box state-box--error">
             <AlertCircle size={28} />
             <p>{error}</p>
             <div className="state-box__actions">
-              <button type="button" className="btn btn--outline" onClick={refetch}>
+              <button type="button" className="btn btn--outline" onClick={() => refetch()}>
                 <RefreshCw size={16} /> Retry
               </button>
-              <button
-                type="button"
-                className="btn btn--outline"
-                onClick={() => setUseLocal(true)}
-              >
+              <button type="button" className="btn btn--outline" onClick={() => setUseLocal(true)}>
                 View Local Catalog
               </button>
             </div>
           </div>
         )}
 
-        {!loading && filteredGuns.length === 0 && !error && (
+        {!loading && filteredGuns.length === 0 && !showError && (
           <div className="state-box">
             <PackageOpen size={28} />
             <p>No products match your search.</p>
           </div>
         )}
 
-        {/* Product grid */}
         {filteredGuns.length > 0 && (
           <ul className="stock">
             {filteredGuns.map((gun) => (
               <GunCard
                 key={gun.id || gun.name}
                 gun={gun}
-                onSelect={setSelectedGun}
+                onSelect={(g) => onNavigate && onNavigate('Detail', g)}
                 onEdit={onNavigate ? (g) => onNavigate('Edit', g) : undefined}
-                onDelete={setDeleteTarget}
+                onDelete={setArchiveTarget}
               />
             ))}
           </ul>
@@ -181,31 +166,22 @@ export default function Catalog({ onNavigate }) {
         {useLocal && (
           <p className="local-notice">
             Showing local catalog (server unavailable).{' '}
-            <button
-              type="button"
-              className="link-btn"
-              onClick={() => { setUseLocal(false); refetch() }}
-            >
+            <button type="button" className="link-btn" onClick={() => { setUseLocal(false); refetch() }}>
               Retry server
             </button>
           </p>
         )}
       </section>
 
-      {/* Delete confirmation */}
       <ConfirmModal
-        open={!!deleteTarget}
-        title="Delete Product"
-        message={`Are you sure you want to delete "${deleteTarget?.name}"? This action cannot be undone.`}
-        confirmLabel="Delete"
-        danger
-        loading={deleting}
-        onConfirm={handleDelete}
-        onCancel={() => { setDeleteTarget(null); setDeleteError('') }}
+        open={!!archiveTarget}
+        title="Move to Archive"
+        message={`Archive "${archiveTarget?.name}"? It will be hidden from the catalog (soft delete) and can be restored any time from Profile → Archive.`}
+        confirmLabel="Archive"
+        onConfirm={handleArchive}
+        onCancel={() => setArchiveTarget(null)}
       />
-      {deleteError && (
-        <div className="toast toast--error">{deleteError}</div>
-      )}
+      {toast && <div className="toast toast--success toast--floating">{toast}</div>}
     </>
   )
 }
