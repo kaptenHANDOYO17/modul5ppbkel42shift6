@@ -55,6 +55,9 @@ if "!ORIGIN!"=="" (
 )
 
 echo [+] Push ke GitHub (kalau diminta login, login lewat browser yang muncul)...
+git push -u origin main && goto :done
+echo [!] Repo GitHub sudah berisi commit lain, menggabungkan dulu...
+git pull origin main --allow-unrelated-histories --no-edit -X ours
 git push -u origin main || (echo [X] Push gagal. Cek link repo / login GitHub. & pause & exit /b 1)
 
 :done

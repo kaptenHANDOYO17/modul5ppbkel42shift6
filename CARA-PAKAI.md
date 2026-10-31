@@ -6,7 +6,7 @@ Semua kode dari modul sudah terpasang. Cukup double-click file `.bat` sesuai uru
 |---|---|
 | `1-JALANKAN.bat` | Buat `.env`, `npm install`, lalu `npm run dev` dan buka browser |
 | `2-PRODUKSI.bat` | `npm run build` + `npm run preview` (cek PWA mode produksi) |
-| `3-PUSH-KE-GITHUB.bat` | Commit, buat repo GitHub baru, lalu `git push -u origin main` |
+| `3-PUSH-KE-GITHUB.bat` | Commit lalu `git push -u origin main` ke https://github.com/kaptenHANDOYO17/modul5ppbkel42shift6 |
 | `4-DEPLOY-VERCEL.bat` | (Opsional) deploy langsung ke Vercel tanpa lewat dashboard |
 
 Yang perlu terpasang di laptop: **Node.js** dan **Git**.
