@@ -20,3 +20,6 @@ dist-ssr/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Pesan commit sekali pakai untuk skrip .bat
+.pesan-commit.txt

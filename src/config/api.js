@@ -41,6 +41,13 @@ apiClient.interceptors.request.use(
         config.headers['Authorization'] = `Bearer ${SUPABASE_KEY}`
       }
     }
+    if ((config.method || 'get').toLowerCase() === 'get') {
+      console.log(
+        `%cNETWORK%c [API] GET ${config.url}`,
+        'background:#2471a3;color:#fff;padding:2px 6px;border-radius:3px;font-weight:700',
+        'color:inherit',
+      )
+    }
     return config
   },
   (error) => Promise.reject(error),

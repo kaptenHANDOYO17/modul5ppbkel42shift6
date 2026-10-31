@@ -34,6 +34,7 @@ export function useGuns(params = {}) {
     pagination: query.data?.pagination ?? null,
     refetch: query.refetch,
     isFetching: query.isFetching,
+    isStale: query.isStale,
     updatedAt: query.dataUpdatedAt,
   }
 }

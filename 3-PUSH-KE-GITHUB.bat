@@ -25,7 +25,10 @@ if "!GITMAIL!"=="" (
 
 git branch -M main
 git add .
-git diff --cached --quiet || git commit -m "chore: update project dari laptop"
+git diff --cached --quiet || (
+  if exist ".pesan-commit.txt" (git commit -F .pesan-commit.txt) else (git commit -m "chore: update project dari laptop")
+)
+if exist ".pesan-commit.txt" del ".pesan-commit.txt"
 
 rem --- buang remote bawaan repo modul (SekarBnY) ---
 for /f "delims=" %%u in ('git remote get-url origin 2^>nul') do set ORIGIN=%%u

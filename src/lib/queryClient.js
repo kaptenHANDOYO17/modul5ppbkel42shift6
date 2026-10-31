@@ -47,6 +47,7 @@ export const queryKeys = {
   allGuns: ['guns'],
   gun: (id) => ['gun', String(id)],
   reviews: (gunId) => ['reviews', String(gunId)],
+  favorites: (userId) => ['favorites', userId],
 }
 
 /** Find a product that is already in any cached list (no network). */

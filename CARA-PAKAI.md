@@ -27,6 +27,21 @@ Kalau repo sudah di-import di Vercel, setiap push otomatis memicu deploy ulang.
 | 8 | Edit nama & bio di page baru | `pages/EditProfilePage.jsx` | Profile → **Edit Profile** → halaman terpisah → Save. |
 | 9 | Keranjang + checkout ke WA | `stores/cartStore.js`, `pages/CartPage.jsx`, `config/store.js` | **Add to Cart** → menu **Cart** → atur jumlah → **Checkout via WhatsApp** → terbuka chat ke 0895-3781-69126 dengan pesan *"Hi aku mau pesan ...."* berisi daftar pesanan & total. |
 
+## Cara cek Query Caching (DevTools)
+
+Buka web → tekan **F12** → tab **Console**:
+
+1. Load pertama: muncul label merah **FETCH** (`cache kosong → request ke API`) lalu **STORED** (disimpan ke cache 5 menit). Ada juga label biru **NETWORK** = request sungguhan ke Supabase.
+2. Pindah ke Profile lalu kembali ke Catalog: muncul label hijau **HIT** — `dari cache · TIDAK ada request ke API`. Tidak ada label NETWORK baru.
+3. Reload halaman (F5): muncul **RESTORED** (cache dipulihkan dari localStorage) lalu **HIT**.
+4. Ketik `cacheStatus()` di Console → tabel isi cache (query, umur, fresh) + isi Cache Storage service worker.
+5. Ketik `clearCache()` (atau klik **Clear cache** di katalog) lalu reload → kembali FETCH → STORED → HIT.
+
+Tab lain yang bisa ditunjukkan:
+- **Network**: setelah HIT tidak ada request baru ke `/rest/v1/products`. Request API yang lewat service worker bertanda **(ServiceWorker)** di kolom Size.
+- **Application → Local Storage → `bore_barrel_query_cache`**: cache TanStack Query yang tersimpan.
+- **Application → Cache Storage → `supabase-api-cache`**: response API yang di-cache service worker (dipakai saat offline). Coba centang **Offline** di tab Network lalu reload — data tetap tampil.
+
 Catatan: data tambahan (arsip, keranjang, vote review) disimpan di localStorage,
 mengikuti pola favorites di modul. Review dicoba ke server Supabase dulu; kalau
 server menolak (RLS) atau offline, perubahan tetap tersimpan di perangkat.

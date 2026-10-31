@@ -1,6 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import favoriteService from '../services/favoriteService'
 import { getUserIdentifier } from '../services/userService'
+import { queryKeys } from '../lib/queryClient'
 
 // ---------------------------------------------------------------------------
 // localStorage fallback — used when the backend is unavailable so that
@@ -27,45 +29,39 @@ const writeLocalFavs = (ids) => {
 }
 
 // ---------------------------------------------------------------------------
-// useFavorites — list all favourited product IDs.
+// useFavorites — list all favourited product IDs (Query Cached).
 //
+// Satu cache dipakai bersama oleh Header, FavoritesPage, dan SEMUA tombol
+// favorit di kartu — jadi hanya 1 request walau ada banyak komponen.
 // First attempts the server; on failure uses localStorage.
 // ---------------------------------------------------------------------------
 
+const EMPTY = []
+
 export function useFavorites() {
-  const [favorites, setFavorites] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [isLocal, setIsLocal] = useState(false)
   const userIdentifier = getUserIdentifier()
 
-  const fetchFavorites = useCallback(async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const response = await favoriteService.getFavorites(userIdentifier)
-
-      if (response.success) {
-        setFavorites(response.data || [])
-        setIsLocal(false)
-      } else {
-        throw new Error(response.message)
+  const query = useQuery({
+    queryKey: queryKeys.favorites(userIdentifier),
+    queryFn: async () => {
+      try {
+        const response = await favoriteService.getFavorites(userIdentifier)
+        if (!response.success) throw new Error(response.message)
+        return { list: response.data || [], isLocal: false }
+      } catch {
+        // Fallback to localStorage
+        return { list: readLocalFavs(), isLocal: true }
       }
-    } catch {
-      // Fallback to localStorage
-      setFavorites(readLocalFavs())
-      setIsLocal(true)
-    } finally {
-      setLoading(false)
-    }
-  }, [userIdentifier])
+    },
+  })
 
-  useEffect(() => {
-    fetchFavorites()
-  }, [fetchFavorites])
-
-  return { favorites, loading, error, isLocal, refetch: fetchFavorites }
+  return {
+    favorites: query.data?.list ?? EMPTY,
+    loading: query.isLoading,
+    error: null,
+    isLocal: query.data?.isLocal ?? false,
+    refetch: query.refetch,
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +69,7 @@ export function useFavorites() {
 // ---------------------------------------------------------------------------
 
 export function useToggleFavorite() {
+  const queryClient = useQueryClient()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const userIdentifier = getUserIdentifier()
@@ -108,6 +105,7 @@ export function useToggleFavorite() {
       return { is_favorited: isFavorited }
     } finally {
       setLoading(false)
+      queryClient.invalidateQueries({ queryKey: queryKeys.favorites(userIdentifier) })
     }
   }
 
@@ -119,7 +117,7 @@ export function useToggleFavorite() {
 // ---------------------------------------------------------------------------
 
 export function useIsFavorited(gunId) {
-  const { favorites, loading: fetchLoading, refetch } = useFavorites()
+  const { favorites, loading: fetchLoading } = useFavorites()
   const { toggleFavorite: toggle, loading: toggleLoading } = useToggleFavorite()
 
   // Check both server-format (objects with .id) and local-format (plain ids)
@@ -129,9 +127,7 @@ export function useIsFavorited(gunId) {
   })
 
   const toggleFavorite = async () => {
-    const result = await toggle(gunId)
-    if (result) await refetch()
-    return result
+    return toggle(gunId) // cache di-invalidate otomatis → semua komponen ikut update
   }
 
   return {

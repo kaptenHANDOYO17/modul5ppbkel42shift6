@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { RefreshCw, Plus, Loader, AlertCircle, PackageOpen, Database } from 'lucide-react'
+import { RefreshCw, Plus, Loader, AlertCircle, PackageOpen, Database, Trash2 } from 'lucide-react'
 import { useGuns, LOCAL_GUNS } from '../hooks/useGuns'
 import GunCard from '../components/gun/GunCard'
 import AdvancedFilter from '../components/common/AdvancedFilter'
@@ -31,7 +31,7 @@ const timeAgo = (ts) => {
  * Archived (soft-deleted) items are hidden here and listed in Profile → Archive.
  */
 export default function Catalog({ onNavigate }) {
-  const { guns: apiGuns, loading, error, refetch, isFetching, updatedAt } = useGuns({ limit: 50 })
+  const { guns: apiGuns, loading, error, refetch, isFetching, isStale, updatedAt } = useGuns({ limit: 50 })
   const [useLocal, setUseLocal] = useState(false)
   const archive = useArchive()
 
@@ -95,16 +95,23 @@ export default function Catalog({ onNavigate }) {
           </div>
         </div>
 
-        {/* Query cache status */}
-        {!useLocal && updatedAt > 0 && (
+        {/* Query cache status — cek juga DevTools → Console */}
+        {!useLocal && (
           <div className="cache-bar">
             <Database size={14} />
             <span>
-              {isFetching ? 'Refreshing…' : `Cached · updated ${timeAgo(updatedAt)}`}
+              {isFetching
+                ? 'Fetching from API…'
+                : updatedAt > 0
+                  ? `Query cache · data from ${timeAgo(updatedAt)} · ${isStale ? 'stale' : 'fresh (no API call)'}`
+                  : 'Query cache empty'}
               {error && ' · offline, showing cached data'}
             </span>
             <button type="button" className="link-btn" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw size={13} className={isFetching ? 'spin' : ''} /> Refresh
+            </button>
+            <button type="button" className="link-btn" onClick={() => window.clearCache?.().then(() => refetch())}>
+              <Trash2 size={13} /> Clear cache
             </button>
           </div>
         )}

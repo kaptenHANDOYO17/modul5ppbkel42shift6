@@ -24,7 +24,10 @@ call npm run build || (echo [X] Build gagal & pause & exit /b 1)
 echo.
 echo [3/4] Commit + push ke GitHub ...
 git add .
-git diff --cached --quiet || git commit -m "chore: update project dari laptop"
+git diff --cached --quiet || (
+  if exist ".pesan-commit.txt" (git commit -F .pesan-commit.txt) else (git commit -m "chore: update project dari laptop")
+)
+if exist ".pesan-commit.txt" del ".pesan-commit.txt"
 git push -u origin main
 if errorlevel 1 (
   echo [!] Push langsung gagal, coba gabungkan dengan isi GitHub dulu...
