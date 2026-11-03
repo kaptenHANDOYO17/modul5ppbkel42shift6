@@ -4,13 +4,35 @@ import { apiClient, IS_SUPABASE } from '../config/api'
 // Normalizer — standardizes product shape whether received from Supabase
 // (public.products) or from the university API (/api/v1/recipes).
 // ---------------------------------------------------------------------------
+export const GALLERY_PREFIX = '__image'
+
+const withGallery = (specsArray, images) =>
+  Array.isArray(images)
+    ? [...(specsArray || []), ...images.filter(Boolean).map((url) => `${GALLERY_PREFIX}: ${url}`)]
+    : specsArray
+
 export const normalizeProduct = (item) => {
   if (!item) return null
 
   // Resolve specifications from Supabase `specs` (text array) or API `ingredients`
+  // Gallery images are stored inside `specs` as "__image: <url>" entries so
+  // the feature works without changing the database schema.
+  const gallery = []
+  const rawSpecs = Array.isArray(item.specs)
+    ? item.specs.filter((s) => {
+        if (typeof s === 'string' && s.startsWith(`${GALLERY_PREFIX}:`)) {
+          gallery.push(s.slice(GALLERY_PREFIX.length + 1).trim())
+          return false
+        }
+        return true
+      })
+    : null
+  if (Array.isArray(item.gallery)) gallery.push(...item.gallery.filter(Boolean))
+  else if (Array.isArray(item.images)) gallery.push(...item.images.filter(Boolean))
+
   let specsList = []
-  if (Array.isArray(item.specs)) {
-    specsList = item.specs.map((s, idx) => {
+  if (rawSpecs) {
+    specsList = rawSpecs.map((s, idx) => {
       if (typeof s === 'string') {
         const colonIndex = s.indexOf(':')
         if (colonIndex > -1) {
@@ -49,6 +71,8 @@ export const normalizeProduct = (item) => {
     description: item.description || '',
     image_url: item.image_url || item.image || '/guns/pistol.svg',
     image: item.image_url || item.image || '/guns/pistol.svg',
+    gallery,
+    images: [item.image_url || item.image || '/guns/pistol.svg', ...gallery],
     ingredients: specsList,
     steps: stepsList,
   }
@@ -139,7 +163,7 @@ class GunService {
         caliber: data.caliber || '9mm',
         price: Number(data.price ?? data.cook_time ?? 0),
         description: data.description || '',
-        specs: specsArray,
+        specs: withGallery(specsArray, data.images),
         image_url: data.image_url || null,
       }
 
@@ -173,7 +197,7 @@ class GunService {
         payload.price = Number(data.price ?? data.cook_time ?? 0)
       }
       if (data.description !== undefined) payload.description = data.description
-      if (specsArray !== undefined) payload.specs = specsArray
+      if (specsArray !== undefined) payload.specs = withGallery(specsArray, data.images)
       if (data.image_url !== undefined) payload.image_url = data.image_url
 
       const res = await apiClient.patch(`/rest/v1/products?id=eq.${id}`, payload, {

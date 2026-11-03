@@ -19,6 +19,7 @@ import {
   getDraftTimestamp,
   formatDraftTime,
 } from '../utils/draftStorage'
+import GalleryInput from '../components/common/GalleryInput'
 import ConfirmModal from '../components/modals/ConfirmModal'
 
 /**
@@ -46,6 +47,8 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
   })
 
   const [currentImageUrl, setCurrentImageUrl] = useState('')
+  // Tugas 6.6.7 — gambar tambahan
+  const [gallery, setGallery] = useState([])
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploading, setUploading] = useState(false)
@@ -89,6 +92,7 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
             is_featured: Boolean(data.is_featured),
           })
           setCurrentImageUrl(data.image_url || data.image || '/guns/pistol.svg')
+          setGallery(Array.isArray(data.gallery) ? data.gallery : [])
 
           if (data.ingredients && data.ingredients.length > 0) {
             setSpecs(data.ingredients.map((ing) => ({
@@ -131,6 +135,7 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       if (draft.formData) setFormData(draft.formData)
       if (draft.specs) setSpecs(draft.specs)
       if (draft.steps) setSteps(draft.steps)
+      if (Array.isArray(draft.gallery)) setGallery(draft.gallery)
       if (draft.imagePreview) {
         setImagePreview(draft.imagePreview)
       }
@@ -152,6 +157,7 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       specs,
       steps,
       imagePreview: imagePreview || currentImageUrl,
+      gallery,
     }
     const saved = saveDraft(draftData, targetId)
     if (saved) {
@@ -273,6 +279,7 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
       category: formData.category || 'makanan',
       description: formData.description.trim() || `${formData.type} caliber ${formData.caliber}.`,
       image_url: imagePreview || currentImageUrl || '/guns/pistol.svg',
+      images: gallery,
       prep_time: 15,
       cook_time: Number(formData.price) || 500,
       servings: Number(formData.servings) || 1,
@@ -387,6 +394,20 @@ export default function EditGunPage({ gun, gunId, onBack, onSuccess }) {
             </div>
           </div>
         </div>
+
+        {/* Multiple images per catalog */}
+        <GalleryInput
+          images={gallery}
+          onChange={setGallery}
+          cover={imagePreview || currentImageUrl}
+          onMakeCover={(i) => {
+            const next = [...gallery]
+            const [picked] = next.splice(i, 1, imagePreview || currentImageUrl)
+            setGallery(next.filter(Boolean))
+            setImagePreview(null)
+            setCurrentImageUrl(picked)
+          }}
+        />
 
         {/* Core fields */}
         <div className="form-grid">

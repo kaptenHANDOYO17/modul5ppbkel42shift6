@@ -3,7 +3,15 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vite.dev/config/
+// Header cache yang sama dengan vercel.json, untuk `npm run preview` lokal
+const staticCacheHeaders = {
+  'Cache-Control': 'public, max-age=604800, immutable',
+}
+
 export default defineConfig({
+  preview: {
+    headers: staticCacheHeaders,
+  },
   plugins: [
     react(),
     VitePWA({
@@ -24,7 +32,11 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,webmanifest}'],
+        // Gambar statis (logo.png, guns/*.svg) SENGAJA tidak di-precache:
+        // gambar dilayani lewat HTTP cache browser (header Cache-Control di
+        // vercel.json) → di DevTools Network tampil "(disk cache)" /
+        // "(memory cache)". JS/CSS/HTML tetap di-precache agar app bisa offline.
+        globPatterns: ['**/*.{js,css,html,webmanifest}', 'icon-*.png'],
         // Query caching level Service Worker (lihat DevTools → Application →
         // Cache Storage → supabase-api-cache, dan kolom Size "(ServiceWorker)"
         // di tab Network). NetworkFirst: online → data terbaru, offline/lambat

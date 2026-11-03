@@ -42,9 +42,10 @@ export default function ShareButton({ gun, compact = false }) {
         {!compact && 'Share'}
       </button>
 
-      {open && compact && <div className="share-backdrop" onClick={() => setOpen(false)} />}
+      {/* Panel tampil di tengah layar (fixed) agar tidak terpotong oleh kartu / kotak detail */}
+      {open && <div className="share-backdrop" onClick={() => setOpen(false)} />}
       {open && (
-        <div className={`share-panel${compact ? ' share-panel--floating' : ''}`} role="dialog" aria-label="Share link">
+        <div className="share-panel share-panel--floating" role="dialog" aria-label="Share link">
           <div className="share-panel-head">
             <strong>Share this piece</strong>
             <button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Close">

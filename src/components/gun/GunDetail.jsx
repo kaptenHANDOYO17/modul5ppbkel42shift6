@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import { ArrowLeft, Star, Archive, Pencil } from 'lucide-react'
+import LazyImage from '../common/LazyImage'
 import FavoriteButton from '../common/FavoriteButton'
 import ShareButton from '../common/ShareButton'
 import AddToCartButton from '../cart/AddToCartButton'
@@ -20,6 +22,8 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
   const category = gun.type || gun.category || '—'
   const caliber = gun.caliber || gun.difficulty || ''
   const price = gun.price ?? gun.cook_time ?? 0
+  const photos = [imgSrc, ...(Array.isArray(gun.gallery) ? gun.gallery : [])]
+  const [active, setActive] = useState(0)
 
   // Same cached query as ReviewSection — no extra request.
   const { reviews } = useReviews(gun.id)
@@ -33,7 +37,28 @@ export default function GunDetail({ gun, onBack, onEdit, onDelete }) {
       </button>
 
       <div className="detail-hero">
-        <img className="detail-img" src={imgSrc} alt={gun.name} loading="lazy" decoding="async" />
+        <div className="detail-gallery">
+          <img className="detail-img" src={photos[active] || imgSrc} alt={`${gun.name} — photo ${active + 1}`} decoding="async" />
+          {photos.length > 1 && (
+            <>
+              <span className="photo-count photo-count--detail">{active + 1} / {photos.length}</span>
+              <div className="detail-thumbs" role="tablist" aria-label="Product photos">
+                {photos.map((url, i) => (
+                  <button
+                    key={`${i}-${url.slice(-16)}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={i === active}
+                    className={`detail-thumb${i === active ? ' detail-thumb--active' : ''}`}
+                    onClick={() => setActive(i)}
+                  >
+                    <LazyImage src={url} alt={`Photo ${i + 1}`} rootMargin="0px" />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
         <div className="detail-info">
           <h1 className="display">{gun.name}</h1>
           <p className="type">

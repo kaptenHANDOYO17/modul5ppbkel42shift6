@@ -37,6 +37,14 @@ Buka web → tekan **F12** → tab **Console**:
 4. Ketik `cacheStatus()` di Console → tabel isi cache (query, umur, fresh) + isi Cache Storage service worker.
 5. Ketik `clearCache()` (atau klik **Clear cache** di katalog) lalu reload → kembali FETCH → STORED → HIT.
 
+### Melihat tulisan "(disk cache)" di tab Network
+
+1. Buka web di Vercel, F12 → tab **Network**. Pastikan **Disable cache TIDAK dicentang**.
+2. Kunjungan pertama: `logo.png`, `pistol.svg`, `rifle.svg`, `shotgun.svg`, file `assets/*.js` diunduh dari network dan disimpan browser (header `Cache-Control` dari `vercel.json`).
+3. **Tutup tab, buka tab baru**, lalu buka lagi link Vercel-nya → kolom **Size** gambar-gambar itu menjadi **(disk cache)**.
+   Kalau hanya tekan F5 (reload), Chrome biasanya menulis **(memory cache)** — sama-sama dari cache.
+4. Filter **Img** supaya jelas. Gambar yang di-upload sendiri (baris `data:image/...`) memang tidak pernah lewat cache karena tersimpan sebagai teks base64 di database.
+
 Tab lain yang bisa ditunjukkan:
 - **Network**: setelah HIT tidak ada request baru ke `/rest/v1/products`. Request API yang lewat service worker bertanda **(ServiceWorker)** di kolom Size.
 - **Application → Local Storage → `bore_barrel_query_cache`**: cache TanStack Query yang tersimpan.

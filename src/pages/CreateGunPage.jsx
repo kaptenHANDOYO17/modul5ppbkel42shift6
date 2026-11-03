@@ -19,6 +19,7 @@ import {
   getDraftTimestamp,
   formatDraftTime,
 } from '../utils/draftStorage'
+import GalleryInput from '../components/common/GalleryInput'
 import ConfirmModal from '../components/modals/ConfirmModal'
 
 /**
@@ -44,6 +45,8 @@ export default function CreateGunPage({ onBack, onSuccess }) {
   const [imageFile, setImageFile] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [uploadedImageUrl, setUploadedImageUrl] = useState('')
+  // Tugas 6.6.7 — gambar tambahan (lebih dari satu gambar per katalog)
+  const [gallery, setGallery] = useState([])
 
   // Specifications (ingredients in API)
   const [specs, setSpecs] = useState([
@@ -73,6 +76,7 @@ export default function CreateGunPage({ onBack, onSuccess }) {
       specs,
       steps,
       uploadedImageUrl,
+      gallery,
     }
     const saved = saveDraft(draftData, 'create')
     if (saved) {
@@ -83,7 +87,7 @@ export default function CreateGunPage({ onBack, onSuccess }) {
         setTimeout(() => setSuccessMsg(''), 3000)
       }
     }
-  }, [formData, specs, steps, uploadedImageUrl])
+  }, [formData, specs, steps, uploadedImageUrl, gallery])
 
   // Auto-save draft every 30 seconds while in form step
   useEffect(() => {
@@ -102,6 +106,7 @@ export default function CreateGunPage({ onBack, onSuccess }) {
       if (draft.formData) setFormData(draft.formData)
       if (draft.specs) setSpecs(draft.specs)
       if (draft.steps) setSteps(draft.steps)
+      if (Array.isArray(draft.gallery)) setGallery(draft.gallery)
       if (draft.uploadedImageUrl) {
         setUploadedImageUrl(draft.uploadedImageUrl)
         setImagePreview(draft.uploadedImageUrl)
@@ -262,6 +267,7 @@ export default function CreateGunPage({ onBack, onSuccess }) {
       category: formData.category || 'makanan',
       description: formData.description.trim() || `${formData.type} caliber ${formData.caliber}.`,
       image_url: uploadedImageUrl || '/guns/pistol.svg',
+      images: gallery,
       prep_time: 15,
       cook_time: Number(formData.price) || 500, // Price stored in cook_time
       servings: Number(formData.servings) || 1,
@@ -462,6 +468,20 @@ export default function CreateGunPage({ onBack, onSuccess }) {
               Change Image
             </button>
           </div>
+
+          {/* Multiple images per catalog */}
+          <GalleryInput
+            images={gallery}
+            onChange={setGallery}
+            cover={uploadedImageUrl || imagePreview}
+            onMakeCover={(i) => {
+              const next = [...gallery]
+              const [picked] = next.splice(i, 1, uploadedImageUrl || imagePreview)
+              setGallery(next.filter(Boolean))
+              setUploadedImageUrl(picked)
+              setImagePreview(picked)
+            }}
+          />
 
           {/* Core Info */}
           <div className="form-grid">
